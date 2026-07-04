@@ -1,0 +1,10 @@
+name: privacy_preview_review
+version: v1-pre2
+description: Review privacy-preview outputs before a remote provider run. Prefer scripts/preview_provider_payload.py for the actual local preview.
+steps:
+- id: packet_audit
+  prompt: prompts/18_manuscript_packet_auditor.md
+  output: outputs/00_packet_audit.md
+- id: provider_privacy_preview_review
+  prompt: prompts/36_provider_privacy_preview_reviewer.md
+  output: outputs/privacy/provider_privacy_preview_review.md

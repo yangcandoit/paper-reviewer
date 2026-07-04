@@ -1,0 +1,23 @@
+name: diagnostic_pre_submission_review
+version: v1-pre2
+description: Focused diagnostics for fatal flaws, visual hallucination risk, focus coverage, and criticality.
+steps:
+- id: paper_map
+  prompt: prompts/01_paper_map.md
+  output: outputs/01_paper_map.md
+- id: claim_evidence
+  prompt: prompts/02_claim_evidence_matrix.md
+  output: outputs/02_claim_evidence_matrix.md
+- id: visual_hallucination_guard
+  prompt: prompts/33_visual_hallucination_guard.md
+  output: outputs/validation/visual_hallucination_guard.md
+  uses_visual_assets: true
+- id: critical_problem_review
+  prompt: prompts/32_critical_problem_reviewer.md
+  output: outputs/diagnostics/critical_problem_review.md
+- id: focus_coverage_auditor
+  prompt: prompts/28_focus_coverage_auditor.md
+  output: outputs/validation/focus_coverage_audit.md
+- id: criticality_calibrator
+  prompt: prompts/26_criticality_calibrator.md
+  output: outputs/validation/criticality_calibration.md

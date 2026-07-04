@@ -1,0 +1,24 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Tool-generated local config (never distribute)
+.claude/
+.cursor/
+.kiro/
+
+# macOS
+.DS_Store
+
+# Test/dev artifacts
+.pytest_cache/
+.hypothesis/
+*.egg-info/
+dist/
+build/
+
+# Runtime workspaces (created when the skill is used)
+agent_review_workspace/
+review_packet/
+panel_outputs/

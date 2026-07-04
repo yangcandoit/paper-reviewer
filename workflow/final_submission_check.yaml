@@ -1,0 +1,49 @@
+name: final_submission_check
+version: v1-pre2
+description: Final audit focused on compliance, reproducibility, privacy, citation/visual evidence, and remaining risk.
+inputs:
+  packet_manifest: review_packet/manifest.json
+steps:
+- id: packet_audit
+  prompt: prompts/18_manuscript_packet_auditor.md
+  output: outputs/00_packet_audit.md
+- id: prompt_injection_sanitizer
+  prompt: prompts/16_prompt_injection_sanitizer.md
+  output: outputs/00_prompt_injection_sanitizer.md
+- id: compliance_reproducibility_ethics
+  prompt: prompts/10_compliance_reproducibility_ethics_reviewer.md
+  output: outputs/independent/compliance_reproducibility_ethics_review.md
+- id: provider_privacy_preview_review
+  prompt: prompts/36_provider_privacy_preview_reviewer.md
+  output: outputs/privacy/provider_privacy_preview_review.md
+- id: visual_hallucination_guard
+  prompt: prompts/33_visual_hallucination_guard.md
+  output: outputs/validation/visual_hallucination_guard.md
+  uses_visual_assets: true
+- id: figure_table_evidence_matrix_review
+  prompt: prompts/29_figure_table_evidence_matrix_reviewer.md
+  output: outputs/validation/figure_table_evidence_matrix_review.md
+  uses_visual_assets: true
+- id: citation_claim_auditor
+  prompt: prompts/30_citation_claim_auditor.md
+  output: outputs/validation/citation_claim_audit.md
+- id: critical_problem_review
+  prompt: prompts/32_critical_problem_reviewer.md
+  output: outputs/diagnostics/critical_problem_review.md
+- id: severity_calibrator
+  prompt: prompts/21_severity_calibrator.md
+  output: outputs/validation/severity_calibration.md
+- id: focus_coverage_auditor
+  prompt: prompts/28_focus_coverage_auditor.md
+  output: outputs/validation/focus_coverage_audit.md
+- id: meta_review
+  prompt: prompts/11_meta_reviewer.md
+  output: outputs/final/meta_review.md
+- id: patch_plan
+  prompt: prompts/15_revision_patch_planner.md
+  output: outputs/final/patch_plan.md
+validation:
+  script: scripts/validate_review_outputs.py
+  outputs:
+  - outputs/final/meta_review.md
+  - outputs/final/patch_plan.md

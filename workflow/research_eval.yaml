@@ -1,0 +1,13 @@
+name: research_evaluation_review
+version: v1-pre2
+description: Prompt-based companion for the local evaluation harness.
+steps:
+- id: review_quality
+  prompt: prompts/13_review_quality_auditor.md
+  output: outputs/validation/review_quality_audit.md
+- id: focus_coverage_auditor
+  prompt: prompts/28_focus_coverage_auditor.md
+  output: outputs/validation/focus_coverage_audit.md
+- id: criticality_calibrator
+  prompt: prompts/26_criticality_calibrator.md
+  output: outputs/validation/criticality_calibration.md

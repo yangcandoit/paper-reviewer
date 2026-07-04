@@ -1,0 +1,10 @@
+name: revision_resolution_check
+version: v1-pre2
+description: Prompt-based companion for scripts/compare_manuscript_revisions.py and scripts/audit_issue_resolution.py.
+steps:
+- id: revision_resolution_review
+  prompt: prompts/34_revision_resolution_reviewer.md
+  output: outputs/revision/revision_resolution_review.md
+- id: remaining_risk_meta_review
+  prompt: prompts/11_meta_reviewer.md
+  output: outputs/revision/remaining_risk_meta_review.md

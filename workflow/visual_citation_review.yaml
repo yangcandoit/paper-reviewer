@@ -1,0 +1,50 @@
+name: visual_citation_review
+version: v1-pre2
+description: Focused workflow for figures, tables, visual evidence, and citation-claim
+  checks.
+inputs:
+  packet_manifest: review_packet/manifest.json
+  domain_profile: review_packet/domain_profile.md
+  venue_profile: review_packet/venue_profile.md
+steps:
+- id: packet_audit
+  prompt: prompts/18_manuscript_packet_auditor.md
+  output: outputs/00_packet_audit.md
+- id: paper_map
+  prompt: prompts/01_paper_map.md
+  output: outputs/01_paper_map.md
+- id: claim_evidence
+  prompt: prompts/02_claim_evidence_matrix.md
+  output: outputs/02_claim_evidence_matrix.md
+- id: visual_hallucination_guard
+  prompt: prompts/33_visual_hallucination_guard.md
+  output: outputs/validation/visual_hallucination_guard.md
+  uses_visual_assets: true
+- id: visual_figure_review
+  prompt: prompts/25_visual_figure_reviewer.md
+  output: outputs/independent/visual_figure_review.md
+  uses_visual_assets: true
+- id: figure_table_evidence_matrix_review
+  prompt: prompts/29_figure_table_evidence_matrix_reviewer.md
+  output: outputs/validation/figure_table_evidence_matrix_review.md
+  uses_visual_assets: true
+- id: citation_auditor
+  prompt: prompts/20_citation_auditor.md
+  output: outputs/validation/citation_audit.md
+- id: citation_claim_auditor
+  prompt: prompts/30_citation_claim_auditor.md
+  output: outputs/validation/citation_claim_audit.md
+- id: coverage_auditor
+  prompt: prompts/22_coverage_auditor.md
+  output: outputs/validation/coverage_audit.md
+- id: meta_review
+  prompt: prompts/11_meta_reviewer.md
+  output: outputs/final/meta_review.md
+- id: patch_plan
+  prompt: prompts/15_revision_patch_planner.md
+  output: outputs/final/patch_plan.md
+validation:
+  script: scripts/validate_review_outputs.py
+  outputs:
+  - outputs/final/meta_review.md
+  - outputs/final/patch_plan.md
