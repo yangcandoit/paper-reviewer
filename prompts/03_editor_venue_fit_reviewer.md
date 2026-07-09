@@ -23,17 +23,6 @@ Then provide:
 - Top 3 reasons for that risk.
 - The single most important change before submission.
 
-## Output contract
-
-Return both:
-
-1. A concise Markdown review using the requested tables/lists.
-2. A JSON issue list following `references/OUTPUT_CONTRACT.md`.
-
-For every P0/P1 issue, include a concrete `evidence_location`. If the location cannot be identified from the provided materials, mark it as `information_gap`, lower confidence, and do not present it as a confirmed flaw.
-
----
-
 ## Required output format
 
 Produce both:

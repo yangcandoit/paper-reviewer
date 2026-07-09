@@ -15,8 +15,8 @@ mkdir -p ~/.claude/skills/paper-reviewer
 cp -R . ~/.claude/skills/paper-reviewer
 
 # Codex
-mkdir -p ~/.agents/skills/paper-reviewer
-cp -R . ~/.agents/skills/paper-reviewer
+mkdir -p ~/.codex/skills/paper-reviewer
+cp -R . ~/.codex/skills/paper-reviewer
 ```
 
 Core dependency: `pip install -r requirements.txt` (PyYAML). Optional: `pip install pymupdf` (PDF extraction), `pip install olefile` (legacy `.doc`).

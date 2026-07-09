@@ -12,7 +12,7 @@ Capture:
 | Field | |
 | Paper type | journal / conference / thesis chapter / short paper / survey / dataset / system paper |
 | Target venue | |
-| Review mode | fast / standard / full / final-check |
+| Review mode | quick / standard / full / visual-citation / final-check / diagnostic / privacy-preview / revision-check / research-eval |
 | Available inputs | PDF / LaTeX / Markdown / DOCX / tables / figures / references / related papers |
 | Missing inputs | |
 | Confidentiality constraints | author-owned / public preprint / third-party confidential / unknown |

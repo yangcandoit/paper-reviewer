@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, fields, asdict
 from pathlib import Path
 from typing import Any, Literal
 import json
@@ -81,7 +81,12 @@ class ReviewIssue:
             "notes": "",
         }
         merged = {**defaults, **data}
-        return cls(**merged)
+        # Drop unrecognized keys (e.g. a prompt that invented a nonstandard field name)
+        # instead of letting them raise TypeError: a reviewer prompt drifting from the
+        # schema should lose the extra field, not the whole issue.
+        known_fields = {f.name for f in fields(cls)}
+        known = {k: v for k, v in merged.items() if k in known_fields}
+        return cls(**known)
 
     def validation_errors(self) -> list[str]:
         errors: list[str] = []

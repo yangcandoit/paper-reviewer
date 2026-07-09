@@ -40,7 +40,7 @@ def provider_from_spec(spec: str):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--packet", required=True, type=Path)
-    ap.add_argument("--workflow", type=Path, default=ROOT / "workflow" / "default_workflow.yaml")
+    ap.add_argument("--workflow", type=Path, default=ROOT / "workflow" / "standard_review.yaml")
     ap.add_argument("--outputs", type=Path, default=Path("panel_outputs"))
     ap.add_argument("--providers", nargs="+", default=["mock:reviewer_a", "mock:reviewer_b"], help="Provider specs, e.g. mock:a openai-compatible:b:gpt-4.1-mini")
     ap.add_argument("--only", nargs="*", help="Optional subset of step IDs to run for each panel member.")

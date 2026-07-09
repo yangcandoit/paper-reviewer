@@ -310,7 +310,7 @@ def extract_pdf_to_markdown(
         import fitz  # type: ignore
     except Exception:
         manifest["status"] = "missing_dependency"
-        manifest["warnings"].append("PyMuPDF is not installed. Install optional dependency: pip install -r requirements-pdf.txt")
+        manifest["warnings"].append("PyMuPDF is not installed. Install optional dependency: pip install pymupdf")
         (out_root / "pdf_extraction_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         return manifest
 

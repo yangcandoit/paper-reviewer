@@ -693,19 +693,29 @@ def render_step_instruction(workspace: Path, step: dict[str, Any], *, skill_root
     # Full-fidelity reading guidance is shown for every step: the host agent is
     # multimodal and is the strongest available recognizer. The local extraction is
     # deliberately lightweight, so route full-fidelity reading back to the agent.
-    lines.extend([
-        "",
-        "## Full-fidelity reading guidance",
-        "",
-        "The locally extracted text is intended for locating page/line evidence anchors, not "
-        "as a perfect transcription. For tables, equations, multi-column layout, non-Latin "
-        "text, figures, or scanned pages, open the original manuscript under "
-        "`review_packet/source_documents/` and, for PDFs, the page render images under "
-        "`review_packet/derived/pdf/page_images/`, and read them directly with your own "
-        "document/vision understanding. Cite page/line anchors from the extracted text so "
-        "findings stay locatable. Do not send file or image bytes to external providers "
-        "unless the user explicitly opts in.",
-    ])
+    # Only point at source_documents/ or page_images/ when this packet actually has
+    # them (e.g. a Markdown-only packet has neither, since .md/.tex/.txt inputs are
+    # copied under sections/, not source_documents/ — pointing at a nonexistent path
+    # is noise for the host agent, not guidance).
+    has_source_documents = any((packet_dir / "source_documents").glob("*")) if (packet_dir / "source_documents").is_dir() else False
+    has_page_images = any((packet_dir / "derived" / "pdf" / "page_images").glob("*")) if (packet_dir / "derived" / "pdf" / "page_images").is_dir() else False
+    if has_source_documents or has_page_images:
+        fidelity_targets = []
+        if has_source_documents:
+            fidelity_targets.append("the original manuscript under `review_packet/source_documents/`")
+        if has_page_images:
+            fidelity_targets.append("the PDF page render images under `review_packet/derived/pdf/page_images/`")
+        lines.extend([
+            "",
+            "## Full-fidelity reading guidance",
+            "",
+            "The locally extracted text is intended for locating page/line evidence anchors, not "
+            "as a perfect transcription. For tables, equations, multi-column layout, non-Latin "
+            "text, figures, or scanned pages, open " + " and ".join(fidelity_targets) + ", and read "
+            "them directly with your own document/vision understanding. Cite page/line anchors "
+            "from the extracted text so findings stay locatable. Do not send file or image bytes "
+            "to external providers unless the user explicitly opts in.",
+        ])
     # Optional high-fidelity upgrade block: only shown when an advanced engine is
     # available on PATH or previous advanced output already exists in the packet.
     # This makes docling/marker agent-orchestrated tools rather than hard-wired pipeline
@@ -801,13 +811,16 @@ def finalize_workspace(workspace: Path, *, skill_root: Path | None = None) -> di
     for rel in missing_required:
         warnings.append(f"Missing or empty expected output for mode {state.get('mode')}: {rel}")
 
+    validation_failed = False
     validation_targets = [str(workspace / rel) for rel in required if (workspace / rel).exists()]
     if validation_targets:
         code, out = _run_script(skill_root, ["scripts/validate_review_outputs.py", *validation_targets], cwd=skill_root)
         commands.append({"command": "validate_review_outputs.py", "returncode": code, "output": out[-4000:]})
         if code != 0:
-            warnings.append("validate_review_outputs.py returned non-zero status")
+            validation_failed = True
+            warnings.append("validate_review_outputs.py returned non-zero status (output contract violation)")
     elif required:
+        validation_failed = True
         warnings.append(
             f"Validation skipped: none of the expected final outputs for mode {state.get('mode')} were found."
         )
@@ -849,7 +862,7 @@ def finalize_workspace(workspace: Path, *, skill_root: Path | None = None) -> di
     completed = len([s for s in state.get("steps", []) if s.get("status") == "completed"])
     total = len(state.get("steps", []))
     incomplete_steps = [s.get("step_id", "") for s in state.get("steps", []) if s.get("status") != "completed"]
-    status = "complete" if not incomplete_steps and not missing_required else "incomplete"
+    status = "complete" if not incomplete_steps and not missing_required and not validation_failed else "incomplete"
     summary = {
         "workspace": str(workspace),
         "mode": state.get("mode"),

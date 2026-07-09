@@ -28,7 +28,22 @@ def main() -> None:
     parser.add_argument("--output", required=True, help="Output review packet folder.")
     parser.add_argument("--venue", default="", help="Target venue or journal.")
     parser.add_argument("--field", default="", help="Research field/domain.")
-    parser.add_argument("--mode", default="standard", choices=["fast", "standard", "full", "final-check", "audit-only"], help="Suggested review mode.")
+    parser.add_argument(
+        "--mode",
+        default="standard",
+        choices=[
+            "quick",
+            "standard",
+            "full",
+            "visual-citation",
+            "final-check",
+            "diagnostic",
+            "privacy-preview",
+            "revision-check",
+            "research-eval",
+        ],
+        help="Suggested review mode (matches the modes accepted by scripts/prepare_agent_review.py).",
+    )
     parser.add_argument("--pdf-text", default="auto", choices=["auto", "off", "force"], help="Simple PDF text extraction: auto extracts the first PDF when present; off disables it.")
     parser.add_argument("--pdf-visuals", default="auto", choices=["auto", "off", "force"], help="Render PDF pages and extract embedded images for visual review: auto when PDF is present; off disables it.")
     parser.add_argument("--pdf-engine", default="simple", choices=["simple", "off", "auto", "docling", "marker", "grobid"], help="Optional advanced PDF ingestion engine. Use auto to select an available local advanced engine; default simple keeps dependencies light.")

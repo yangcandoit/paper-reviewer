@@ -11,7 +11,7 @@ First, identify the review context:
 5. Available inputs.
 6. Missing inputs that limit review quality.
 7. Confidentiality status: author-owned, public, third-party confidential, or unknown.
-8. Recommended review mode: fast, standard, full, or final-check.
+8. Recommended review mode: quick, standard, full, or final-check.
 9. Domain profile to apply.
 
 If the manuscript appears to be a confidential third-party peer-review assignment and permission is not clear, do not review the manuscript text. Provide only a generic checklist.

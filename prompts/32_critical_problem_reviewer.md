@@ -22,19 +22,20 @@ For every issue, include concrete manuscript anchors where available. If a conce
 
 Return a concise Markdown review followed by a JSON issue block compatible with the skill output contract. Use P0/P1/P2 only for substantive problems.
 
-Each fatal-flaw style issue should also include these fields in `notes` or equivalent issue fields:
+Use exactly the standard issue schema from `references/OUTPUT_CONTRACT.md` — do not invent extra field names (e.g. `failure_mode`, `why_it_matters`, `risk_if_unfixed`); an unrecognized field is dropped, and a missing required field (`title` included) drops the whole issue. Map fatal-flaw framing onto the standard fields instead:
 
 ```json
 {
   "issue_id": "FATAL-001",
+  "title": "Short issue title",
   "severity": "P0|P1|P2",
   "confidence": "High|Medium|Low",
   "evidence_location": "...",
   "claim_attacked": "...",
-  "failure_mode": "...",
-  "why_it_matters": "...",
+  "reviewer_concern": "the failure mode: what's broken and why",
+  "why_reviewer_cares": "why this would be a fatal or hard-to-fix problem",
   "fix_type": "new experiment|new analysis|rewrite|limitation|verification needed",
   "required_action": "...",
-  "risk_if_unfixed": "..."
+  "expected_impact": "risk if left unfixed / improvement if fixed"
 }
 ```
