@@ -24,13 +24,15 @@ Core dependency: `pip install -r requirements.txt` (PyYAML). Optional: `pip inst
 ## Quickstart (agent-native)
 
 ```bash
-python3 scripts/prepare_agent_review.py --input ./paper_folder --workspace ./agent_review_workspace --mode standard
+python3 scripts/prepare_agent_review.py --input ./paper_folder --workspace ./agent_review_workspace --mode standard --venue "target venue" --field "field"
 python3 scripts/next_review_step.py --workspace ./agent_review_workspace   # reads NEXT_STEP.md
 # perform the step, write the requested output file, then:
 python3 scripts/next_review_step.py --workspace ./agent_review_workspace --mark-completed <step_id>
 # repeat until done, then:
 python3 scripts/finalize_agent_review.py --workspace ./agent_review_workspace
 ```
+
+Read **`agent_review_workspace/REVIEW_REPORT.md`** — the single consolidated report (readiness summary, top P0/P1 issues, meta-review, patch plan, quality/criticality/focus notes), written at the workspace root. `agent_review_workspace/README.md` (also generated) explains what every other file/folder in the workspace is for.
 
 Inputs supported: LaTeX, Markdown/text, PDF, Word (`.docx` native, `.doc` best-effort). For tables, equations, or scanned pages, the host agent reads the original file and PDF page images directly; the extracted text provides page/line evidence anchors.
 

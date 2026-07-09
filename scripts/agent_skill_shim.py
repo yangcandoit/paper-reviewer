@@ -23,6 +23,8 @@ def main() -> None:
     p.add_argument("--input", required=True, type=Path)
     p.add_argument("--workspace", required=True, type=Path)
     p.add_argument("--mode", default="standard", choices=sorted(MODE_TO_WORKFLOW))
+    p.add_argument("--venue", default="")
+    p.add_argument("--field", default="")
     p.add_argument("--overwrite", action="store_true")
     n = sub.add_parser("next")
     n.add_argument("--workspace", required=True, type=Path)
@@ -38,7 +40,7 @@ def main() -> None:
     f.add_argument("--workspace", required=True, type=Path)
     args = ap.parse_args()
     if args.cmd == "prepare":
-        state = create_workspace(input_path=args.input, workspace=args.workspace, mode=args.mode, skill_root=ROOT, overwrite=args.overwrite)
+        state = create_workspace(input_path=args.input, workspace=args.workspace, mode=args.mode, skill_root=ROOT, overwrite=args.overwrite, venue=args.venue, field=args.field)
         print(f"prepared {args.workspace.resolve()} with {len(state['steps'])} steps")
     elif args.cmd == "next":
         print(write_next_step(args.workspace, skill_root=ROOT, mark_in_progress=True))

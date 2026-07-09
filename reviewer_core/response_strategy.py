@@ -61,13 +61,10 @@ def write_response_strategy(paths_or_dir: list[Path], out_dir: Path) -> dict[str
         "| Concern | Fix before submission | Evidence required | Strategy |",
         "|---|---:|---|---|",
     ]
-    questions = ["# Anticipated Reviewer Questions", ""]
     for entry in report["entries"]:
         concern = str(entry["reviewer_concern"]).replace("|", "\\|")[:220]
         evidence = str(entry["evidence_required"]).replace("|", "\\|")[:180]
         strategy = str(entry["possible_response_strategy"]).replace("|", "\\|")[:220]
         lines.append(f"| {concern} | {entry['should_fix_before_submission']} | {evidence} | {strategy} |")
-        questions.append(f"- How does the manuscript address this concern: {concern}?")
     (out / "response_strategy_matrix.md").write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
-    (out / "anticipated_reviewer_questions.md").write_text("\n".join(questions).rstrip() + "\n", encoding="utf-8")
     return report

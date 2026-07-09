@@ -28,7 +28,8 @@ def main() -> None:
             print(f"Finalized incomplete workspace with warnings: {args.workspace.resolve()}")
         print(f"Completed steps: {summary['completed_steps']}/{summary['total_steps']}")
         print(f"Warnings: {len(summary['warnings'])}")
-        print(f"Final reports: {args.workspace.resolve() / 'final'}")
+        print(f"Read this one file: {args.workspace.resolve() / 'REVIEW_REPORT.md'}")
+        print(f"Full deliverable set (same report + every source file): {args.workspace.resolve() / 'final'}")
 
 
 if __name__ == "__main__":

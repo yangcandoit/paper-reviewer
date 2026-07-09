@@ -28,13 +28,15 @@ def _evidence_level(entry: dict[str, Any]) -> str:
 
 def _source(path: Path, entry: dict[str, Any]) -> str:
     raw = str(entry.get("source") or "").lower()
-    if raw in {"user_provided", "openalex", "crossref", "local", "manual"}:
+    if raw in {"user_provided", "openalex", "crossref", "local", "manual", "agent_web_search"}:
         return raw
     name = path.name.lower()
     if "openalex" in name:
         return "openalex"
     if "crossref" in name:
         return "crossref"
+    if "agent_search" in name or "agent_web_search" in name:
+        return "agent_web_search"
     if "local" in name:
         return "local"
     if "manual" in name or "user" in name:

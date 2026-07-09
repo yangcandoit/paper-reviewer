@@ -71,12 +71,19 @@ def select_steps(
     return selected
 
 
+# Paper-understanding outputs delivered through their own always-included channel
+# (see render_prompt) rather than the peer-review broadcast below, and therefore
+# excluded from it to avoid duplication.
+BACKGROUND_OUTPUT_NAMES = {"01_paper_map.md", "02_claim_evidence_matrix.md"}
+
+
 def collect_previous_outputs(
     outputs_dir: Path,
     *,
     max_files: int = 8,
     chars_per_file: int = 2500,
     max_total_chars: int = 20000,
+    exclude_names: set[str] | None = None,
 ) -> str:
     """Collect a bounded summary of previous Markdown outputs.
 
@@ -87,7 +94,11 @@ def collect_previous_outputs(
     if not outputs_dir.exists() or max_files <= 0 or max_total_chars <= 0:
         return "No previous outputs yet."
 
-    candidates = [p for p in outputs_dir.rglob("*.md") if p.is_file() and not p.name.startswith(".")]
+    exclude_names = exclude_names or set()
+    candidates = [
+        p for p in outputs_dir.rglob("*.md")
+        if p.is_file() and not p.name.startswith(".") and p.name not in exclude_names
+    ]
     candidates = sorted(candidates, key=lambda p: (p.stat().st_mtime, str(p)))[-max_files:]
     chunks: list[str] = []
     total = 0
@@ -132,6 +143,16 @@ def collect_visual_assets(packet_dir: Path, *, max_images: int = 12) -> list[Pat
             break
     return safe
 
+def _collect_background(outputs_dir: Path, *, chars_per_file: int = 6000) -> str:
+    chunks: list[str] = []
+    for name in ("01_paper_map.md", "02_claim_evidence_matrix.md"):
+        path = outputs_dir / name
+        if path.is_file():
+            text = path.read_text(encoding="utf-8", errors="replace")[:chars_per_file]
+            chunks.append(f"\n\n--- PAPER BACKGROUND: {name} ---\n{text}")
+    return "".join(chunks) if chunks else "No paper background outputs yet."
+
+
 def render_prompt(
     prompt_path: Path,
     packet_dir: Path,
@@ -143,16 +164,33 @@ def render_prompt(
     max_previous_output_chars: int = 20000,
 ) -> str:
     prompt = prompt_path.read_text(encoding="utf-8")
-    previous = collect_previous_outputs(
-        outputs_dir,
-        max_files=max_previous_files,
-        chars_per_file=max_previous_chars_per_file,
-        max_total_chars=max_previous_output_chars,
-    )
+    is_independent = str(step.get("output") or "").startswith("outputs/independent/")
+    background = _collect_background(outputs_dir)
+    if is_independent:
+        # Per references/MULTI_MODEL_PANEL.md: independent specialist reviewers must
+        # not see other reviewers' conclusions, or later ones anchor on earlier ones
+        # instead of forming an independent judgment. Paper background (what the
+        # manuscript claims) is not a peer opinion, so it is still included above.
+        previous = (
+            "Withheld: this is an independent specialist review step. Other reviewers' "
+            "outputs are intentionally not shared before independent review is complete "
+            "(see references/MULTI_MODEL_PANEL.md). Form your assessment from the packet "
+            "and paper background only."
+        )
+    else:
+        previous = collect_previous_outputs(
+            outputs_dir,
+            max_files=max_previous_files,
+            chars_per_file=max_previous_chars_per_file,
+            max_total_chars=max_previous_output_chars,
+            exclude_names=BACKGROUND_OUTPUT_NAMES,
+        )
     return "\n".join([
         prompt,
         "\n# Current workflow step",
         json.dumps(step, indent=2),
+        "\n# Paper background (always included)",
+        background,
         "\n# Bounded previous workflow outputs",
         previous,
     ])

@@ -31,57 +31,12 @@ MODE_TO_WORKFLOW = {
     "research-eval": "research_eval.yaml",
 }
 
-# Purpose + read-order hint for each file that can land in final/. Keyed by
-# filename so it works across modes. Order in this dict is the recommended
-# reading order (verdict first, supporting detail last).
-FINAL_FILE_NOTES: dict[str, str] = {
-    "run_summary.md": "Did the run finish cleanly? Steps completed, warnings, script exit codes. Glance only.",
-    "meta_review.md": "Overall verdict and top-line recommendation. Start here.",
-    "critical_problem_review.md": "Diagnostic-mode verdict: fatal-flaw scan. Start here for `diagnostic` mode.",
-    "provider_privacy_preview_review.md": "Privacy-preview verdict: what would be sent to an external provider. Start here for `privacy-preview` mode.",
-    "revision_resolution_review.md": "Revision-check verdict: which prior review comments were actually resolved.",
-    "remaining_risk_meta_review.md": "Revision-check verdict: risk that remains after the revision.",
-    "review_quality_audit.md": "Research-eval verdict: quality of the review process itself, not the paper.",
-    "issue_tracker.md": "Every issue found, one row each, ranked by severity (P0 highest) with an evidence anchor. The working list for triage.",
-    "revision_plan.md": "Concrete per-section edit instructions mapped to each issue above. Use this to actually revise the manuscript.",
-    "response_strategy_matrix.md": "Suggested rebuttal/response angle per issue, for authors preparing a response letter.",
-    "anticipated_reviewer_questions.md": "Likely human-reviewer questions derived from the issues, useful for rebuttal prep.",
-    "review_quality_scores.md": "Hygiene metrics on the review outputs themselves (evidence-anchoring, schema, coverage). Supporting detail, not a paper verdict.",
-    "review_focus_coverage.md": "Which review dimensions (novelty, method, stats, ethics, ...) were actually covered. Supporting detail.",
-    "review_criticality_report.md": "Checks the review wasn't rubber-stamped (praise-vs-weakness signal balance). Supporting detail.",
-    "criticality_calibration.md": "Diagnostic-mode calibration of how severe each fatal-flaw candidate really is. Supporting detail.",
-}
-
-_FINAL_INDEX_INTRO = """# Final Deliverables — Where to Look
-
-Recommended reading order (top of the table = read first). Everything in
-`outputs/` (`independent/`, `validation/`, `diagnostics/`, ...) is raw
-per-specialist working material that has already been synthesized into the
-files below — open those subfolders only if you want one specialist's full
-reasoning on a specific point.
-"""
-
-
-def write_final_index(final_dir: Path) -> None:
-    """Write final/README.md: a purpose + reading-order guide to the files
-    actually present in final/, so a host agent (or the user) doesn't have
-    to guess what each report is for or where to look first."""
-    present = sorted(p.name for p in final_dir.glob("*.md") if p.name != "README.md")
-    lines = [_FINAL_INDEX_INTRO, "| File | What it is |", "|---|---|"]
-    ordered = [name for name in FINAL_FILE_NOTES if name in present]
-    unlisted = [name for name in present if name not in FINAL_FILE_NOTES]
-    for name in ordered:
-        lines.append(f"| `{name}` | {FINAL_FILE_NOTES[name]} |")
-    for name in unlisted:
-        lines.append(f"| `{name}` | (no description on file; open to inspect) |")
-    (final_dir / "README.md").write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
-
 REQUIRED_FINAL_OUTPUTS = {
-    "quick": ["outputs/final/meta_review.md", "outputs/final/patch_plan.md"],
-    "standard": ["outputs/final/meta_review.md", "outputs/final/patch_plan.md"],
-    "full": ["outputs/final/meta_review.md", "outputs/final/patch_plan.md"],
-    "visual-citation": ["outputs/final/meta_review.md", "outputs/final/patch_plan.md"],
-    "final-check": ["outputs/final/meta_review.md", "outputs/final/patch_plan.md"],
+    "quick": ["final/meta_review.md", "final/patch_plan.md"],
+    "standard": ["final/meta_review.md", "final/patch_plan.md"],
+    "full": ["final/meta_review.md", "final/patch_plan.md"],
+    "visual-citation": ["final/meta_review.md", "final/patch_plan.md"],
+    "final-check": ["final/meta_review.md", "final/patch_plan.md"],
     "diagnostic": [
         "outputs/diagnostics/critical_problem_review.md",
         "outputs/validation/criticality_calibration.md",
@@ -314,18 +269,69 @@ def _context_files(packet_dir: Path) -> list[str]:
         files.extend(group_files)
     return files
 
-def _previous_outputs(workspace: Path, current_step_id: str) -> list[str]:
-    outputs = workspace / "outputs"
-    if not outputs.exists():
+
+# Paper-understanding outputs that every step should see regardless of its role: this
+# is manuscript background, not another reviewer's opinion, so it is delivered through
+# its own always-included channel rather than the peer-review broadcast below.
+BACKGROUND_STEP_OUTPUTS = [
+    "outputs/01_paper_map.md",
+    "outputs/02_claim_evidence_matrix.md",
+]
+
+
+def _is_independent_step(step: dict[str, Any]) -> bool:
+    """True for specialist reviewer steps that must stay uncontaminated by peer output.
+
+    Per references/MULTI_MODEL_PANEL.md: "Do not share one model's review with another
+    before independent review is complete." Steps that write into outputs/independent/
+    are exactly those specialist passes (novelty, method, experiment, writing,
+    adversarial, ...); they must not see each other's conclusions, or later reviewers
+    anchor on earlier ones instead of forming an independent judgment.
+    """
+    output = str(step.get("expected_output") or step.get("output") or "")
+    return output.startswith("outputs/independent/")
+
+
+def _background_context(workspace: Path, current_output_rel: str) -> list[str]:
+    found: list[str] = []
+    for rel in BACKGROUND_STEP_OUTPUTS:
+        if rel == current_output_rel:
+            continue
+        if (workspace / rel).is_file():
+            found.append(rel)
+    return found
+
+
+def _previous_outputs(workspace: Path, current_step_id: str, *, peer_review_visible: bool) -> list[str]:
+    """Other steps' outputs to surface as context, in real completion order.
+
+    Independent specialist-reviewer steps get none (see _is_independent_step): this is
+    what actually enforces panel independence, not just a documented convention.
+    Everything else (audit/calibration/synthesis steps, which exist specifically to
+    read and reconcile the specialist outputs) gets the full completed set in the
+    order steps actually finished — not a 20-item cap sorted alphabetically by path,
+    which silently evicted early numbered outputs (paper_map, claim_evidence) before
+    late synthesis steps like meta_review ever ran.
+    """
+    if not peer_review_visible:
         return []
-    paths = []
-    for path in sorted(outputs.rglob("*.md")):
-        if path.is_file() and not path.name.startswith("."):
-            rel = rel_to(path, workspace)
-            # Avoid listing the current expected output as previous context.
-            if current_step_id not in rel:
-                paths.append(rel)
-    return paths[-20:]
+    try:
+        state = load_state(workspace)
+    except FileNotFoundError:
+        return []
+    paths: list[str] = []
+    for s in state.get("steps", []):
+        if s.get("status") != "completed":
+            continue
+        step_id = s.get("step_id")
+        rel = s.get("expected_output") or ""
+        if not rel or step_id == current_step_id or rel in BACKGROUND_STEP_OUTPUTS:
+            continue
+        if not rel.endswith(".md"):
+            continue
+        if (workspace / rel).is_file():
+            paths.append(rel)
+    return paths
 
 
 def _load_prompt(skill_root: Path, prompt_rel: str) -> str:
@@ -370,7 +376,6 @@ def create_workspace(
     if workspace.exists() and overwrite:
         shutil.rmtree(workspace)
     workspace.mkdir(parents=True, exist_ok=True)
-    (workspace / "agent_steps").mkdir(parents=True, exist_ok=True)
     (workspace / "outputs").mkdir(parents=True, exist_ok=True)
     packet_dir = workspace / "review_packet"
     input_root = _prepare_input_root(input_path, workspace)
@@ -636,7 +641,9 @@ def render_step_instruction(workspace: Path, step: dict[str, Any], *, skill_root
     output_path = output_path_for_step(workspace, output_rel)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     context_groups = _context_file_groups(packet_dir)
-    previous = _previous_outputs(workspace, step.get("step_id", ""))
+    is_independent = _is_independent_step(step)
+    background = _background_context(workspace, output_rel)
+    previous = _previous_outputs(workspace, step.get("step_id", ""), peer_review_visible=not is_independent)
     lines = [
         f"# Agent Review Step: {step.get('step_id')}",
         "",
@@ -666,7 +673,21 @@ def render_step_instruction(workspace: Path, step: dict[str, Any], *, skill_root
             lines.pop()
     else:
         lines.append("- `review_packet/manifest.json` if present")
-    if previous:
+    if background:
+        lines.extend(["", "## Paper background (always included)", ""])
+        lines.extend(f"- `{item}`" for item in background)
+    if is_independent:
+        lines.extend([
+            "",
+            "## Independent review — other reviewers' outputs withheld",
+            "",
+            "This step is an independent specialist review (`outputs/independent/`). "
+            "Per `references/MULTI_MODEL_PANEL.md`, other reviewers' conclusions are "
+            "intentionally not included above so your judgment is not anchored on theirs. "
+            "Form your assessment from the packet and paper background only. Do not open "
+            "other files under `outputs/` to check what other reviewers concluded.",
+        ])
+    elif previous:
         lines.extend(["", "## Previous review outputs to consider", ""])
         lines.extend(f"- `{item}`" for item in previous)
     # Full-fidelity reading guidance is shown for every step: the host agent is
@@ -740,10 +761,8 @@ def write_next_step(workspace: Path, *, skill_root: Path | None = None, mark_in_
         next_step["status"] = "in_progress"
         save_state(workspace, state)
     instruction = render_step_instruction(workspace, next_step, skill_root=skill_root)
-    step_file = workspace / "agent_steps" / f"{next_step['step_id']}.md"
-    step_file.parent.mkdir(parents=True, exist_ok=True)
+    step_file = workspace / "NEXT_STEP.md"
     step_file.write_text(instruction, encoding="utf-8")
-    (workspace / "NEXT_STEP.md").write_text(instruction, encoding="utf-8")
     return {
         "status": "pending",
         "step_id": next_step.get("step_id"),
@@ -812,14 +831,16 @@ def finalize_workspace(workspace: Path, *, skill_root: Path | None = None) -> di
         (final / "issue_tracker.csv").write_text("issue_id,severity,title,status\n", encoding="utf-8")
         (final / "review_quality_report.md").write_text("# Review Quality Report\n\nNo review outputs were available to score.\n", encoding="utf-8")
 
-    # Promote this mode's actual final deliverables into final/ (with friendly names).
-    # Driven by REQUIRED_FINAL_OUTPUTS so every mode surfaces its own real outputs,
-    # rather than hardcoding meta_review/patch_plan (which produced misleading
-    # "Not generated yet." placeholders for diagnostic/privacy/revision/research modes).
-    rename = {"patch_plan.md": "revision_plan.md"}
+    # Promote this mode's actual required deliverables into final/, if they were not
+    # already written there directly (quick/standard/full/... synthesis steps write
+    # straight to final/meta_review.md etc.; diagnostic/privacy/revision/research-eval
+    # modes still write into their own outputs/ subdirectory and need copying over).
+    # Driven by REQUIRED_FINAL_OUTPUTS so every mode surfaces its own real outputs.
     for rel in required:
         src = workspace / rel
-        dst = final / rename.get(Path(rel).name, Path(rel).name)
+        dst = final / Path(rel).name
+        if src.resolve() == dst.resolve():
+            continue
         if src.exists() and src.is_file():
             shutil.copy2(src, dst)
         elif not dst.exists():
@@ -872,5 +893,72 @@ def finalize_workspace(workspace: Path, *, skill_root: Path | None = None) -> di
     else:
         lines.append("- No export/audit commands were run.")
     (final / "run_summary.md").write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
-    write_final_index(final)
+
+    # Single consolidated report: final/ otherwise accumulates a dozen separate files
+    # (meta review, patch plan, issue tracker x3, quality/criticality/focus
+    # scorecards, response strategy, run summary, ...). Written twice on purpose:
+    # once at the workspace root, visible the moment the folder is opened without
+    # knowing to look inside final/ first; and once inside final/ itself, because
+    # final/ is the complete deliverable set and the report is part of it, not
+    # something separate from it.
+    from .final_report import build_final_report, REDUNDANT_AFTER_REPORT
+    report_text = build_final_report(final, mode=str(state.get("mode", "")))
+    (workspace / "REVIEW_REPORT.md").write_text(report_text, encoding="utf-8")
+    (final / "REVIEW_REPORT.md").write_text(report_text, encoding="utf-8")
+
+    # These .md files duplicate what REVIEW_REPORT.md now surfaces (their headline
+    # numbers in the summary line, their detail in the Quality & Coverage appendix, or
+    # their content in the Top Issues table / issue_tracker.csv). The scripts that
+    # produce them are general-purpose CLI tools and still write both formats when run
+    # standalone; keep only the machine-readable .json here so final/ doesn't carry
+    # several overlapping documents alongside the report.
+    for name in REDUNDANT_AFTER_REPORT:
+        stale = final / name
+        if stale.is_file():
+            stale.unlink()
+
+    (workspace / "README.md").write_text(_workspace_readme(), encoding="utf-8")
+
+    # NEXT_STEP.md drives the in-progress workflow (it's what the host agent reads to
+    # know what to do next). Once every step is done, its content is just a stale
+    # "review complete" notice that REVIEW_REPORT.md/README.md already cover, so it
+    # gets removed rather than left behind as a leftover file. run_state.json is kept
+    # regardless of status: it's the only way to reset a step and rerun it later, or
+    # to finalize again, and costs a few KB either way.
+    if status == "complete":
+        next_step_path = workspace / "NEXT_STEP.md"
+        if next_step_path.is_file():
+            next_step_path.unlink()
+
     return summary
+
+
+def _workspace_readme() -> str:
+    return (
+        "# Review Workspace\n\n"
+        "**Read this first:** `REVIEW_REPORT.md` (in this folder) — the single "
+        "consolidated report: readiness summary, top P0/P1 issues, meta-review, "
+        "patch plan, and quality/criticality/focus notes, all in one document.\n\n"
+        "## What everything else is\n\n"
+        "| Path | What it is | Open it? |\n"
+        "|---|---|---|\n"
+        "| `REVIEW_REPORT.md` | The report, copied here for visibility. | Yes — start here. |\n"
+        "| `final/` | The complete deliverable set: a second copy of `REVIEW_REPORT.md` "
+        "plus every individual file it was assembled from (`meta_review.md`, "
+        "`issue_tracker.csv`, ...). | Open a specific file here to trace a finding back "
+        "to its source, or to grab one file standalone (e.g. `issue_tracker.csv` into "
+        "a spreadsheet) — not needed if the top-level report already answers your "
+        "question. |\n"
+        "| `outputs/` | Raw per-step process files (each specialist reviewer's and "
+        "auditor's individual output). | Only if debugging the review process itself "
+        "— not needed to read the review. |\n"
+        "| `review_packet/` | The manuscript plus extracted text/evidence the "
+        "reviewers worked from. | Only if you want to see what the reviewers saw. |\n"
+        "| `run_state.json` | Workflow run state: which steps ran, when. Kept so a "
+        "step can be reset and rerun, or this workspace finalized again later. | No — "
+        "internal bookkeeping. |\n"
+        "| `NEXT_STEP.md` | The live \"what to do next\" file while a review is in "
+        "progress. Removed once finalized (its content would just be a stale "
+        "\"complete\" notice — this report replaces it). | N/A once you're reading "
+        "this; only relevant mid-review. |\n"
+    )

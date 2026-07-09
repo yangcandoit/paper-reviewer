@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -27,7 +28,7 @@ from reviewer_core.retrieval import build_query_plan
 
 
 def get_json(url: str, timeout: int = 30) -> dict:
-    req = urllib.request.Request(url, headers={"User-Agent": "paper-reviewer/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "pre-submission-ai-reviewer/1.0"})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
@@ -125,19 +126,24 @@ def main() -> None:
     queries, plan = _load_queries(args)
     results: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
-    for q in queries:
-        try:
-            if args.source in {"crossref", "both"}:
-                results.extend(search_crossref(q, args.rows))
-            if args.source in {"openalex", "both"}:
-                results.extend(search_openalex(q, args.rows))
-        except Exception as exc:
-            errors.append({"query": q, "error": str(exc)})
+    offline = os.environ.get("AI_REVIEWER_OFFLINE") == "1"
+    if offline:
+        errors.append({"query": "*", "error": "skipped: AI_REVIEWER_OFFLINE=1"})
+    else:
+        for q in queries:
+            try:
+                if args.source in {"crossref", "both"}:
+                    results.extend(search_crossref(q, args.rows))
+                if args.source in {"openalex", "both"}:
+                    results.extend(search_openalex(q, args.rows))
+            except Exception as exc:
+                errors.append({"query": q, "error": str(exc)})
     results = _dedupe(results)
     data = {
         "queries": queries,
         "query_plan": plan,
         "privacy_note": "Only short search queries are sent to public metadata APIs; full manuscript text is not uploaded by this script.",
+        "offline": offline,
         "prior_work_entries": results,
         "errors": errors,
     }

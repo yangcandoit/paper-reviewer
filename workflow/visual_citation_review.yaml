@@ -39,12 +39,12 @@ steps:
   output: outputs/validation/coverage_audit.md
 - id: meta_review
   prompt: prompts/11_meta_reviewer.md
-  output: outputs/final/meta_review.md
+  output: final/meta_review.md
 - id: patch_plan
   prompt: prompts/15_revision_patch_planner.md
-  output: outputs/final/patch_plan.md
+  output: final/patch_plan.md
 validation:
   script: scripts/validate_review_outputs.py
   outputs:
-  - outputs/final/meta_review.md
-  - outputs/final/patch_plan.md
+  - final/meta_review.md
+  - final/patch_plan.md
